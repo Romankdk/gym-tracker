@@ -201,21 +201,6 @@ select option{background:var(--surface2);}
 .preset-btn:hover{border-color:var(--accent);color:var(--accent);}
 
 .section-wrap{padding:0 18px;}
-
-/* AI CHAT */
-.chat-wrap{height:380px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;margin-bottom:12px;padding:4px 0;}
-.chat-msg{display:flex;max-width:100%;}
-.chat-msg.user{justify-content:flex-end;}
-.chat-bubble{max-width:85%;padding:10px 13px;border-radius:12px;font-size:13px;line-height:1.55;white-space:pre-wrap;word-break:break-word;}
-.chat-msg.user .chat-bubble{background:var(--accent);color:#000;border-radius:12px 12px 2px 12px;}
-.chat-msg.ai .chat-bubble{background:var(--surface2);color:var(--white);border-radius:12px 12px 12px 2px;border:1px solid var(--border);}
-.chat-msg.ai .chat-bubble.thinking{color:var(--muted);font-family:var(--font-mono);font-size:11px;}
-.chat-input-row{display:flex;gap:8px;align-items:center;}
-.chat-input-row input{flex:1;}
-.chat-send{background:var(--accent);color:#000;border:none;font-family:var(--font-display);font-size:14px;font-weight:800;text-transform:uppercase;padding:10px 16px;border-radius:6px;cursor:pointer;flex-shrink:0;transition:all 0.2s;}
-.chat-send:active{transform:scale(0.96);}
-.quick-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
-.ai-key-saved{font-family:var(--font-mono);font-size:10px;color:var(--green);margin-top:6px;}
 </style>
 </head>
 <body>
@@ -526,60 +511,12 @@ select option{background:var(--surface2);}
   </div>
 </div>
 
-<!-- ===== PAGE: AI COACH ===== -->
-<div class="page" id="page-ai">
-  <div class="page-header pad">
-    <div class="page-eyebrow">// Powered by Claude</div>
-    <div class="page-title">AI<br><span>Coach</span></div>
-  </div>
-  <div class="section-wrap">
-
-    <!-- API Key Setup -->
-    <div class="card" id="ai-setup-card">
-      <div class="card-title">Anthropic API Key</div>
-      <div class="form-row">
-        <div class="form-label">Paste your API key (stored only on this device)</div>
-        <input type="password" id="ai-api-key" placeholder="sk-ant-api03-...">
-      </div>
-      <div id="ai-key-status"></div>
-      <button class="btn btn-sm" onclick="saveApiKey()" style="margin-top:8px">Save Key</button>
-    </div>
-
-    <!-- Quick Questions -->
-    <div class="card">
-      <div class="card-title">Quick Questions</div>
-      <div class="quick-grid">
-        <button class="btn btn-outline btn-sm" onclick="quickAsk('Analyze my nutrition today. What have I eaten, what macros am I missing, and what should I eat now?')">🍽 Today's nutrition</button>
-        <button class="btn btn-outline btn-sm" onclick="quickAsk('Give me a workout tip based on my current PRs and which muscles need rest.')">💪 Workout tip</button>
-        <button class="btn btn-outline btn-sm" onclick="quickAsk('Analyze my body weight trend and measurements. Am I progressing well?')">📏 Body progress</button>
-        <button class="btn btn-outline btn-sm" onclick="quickAsk('What should I focus on this week to maximize my gains based on all my data?')">🎯 Weekly focus</button>
-        <button class="btn btn-outline btn-sm" onclick="quickAsk('Suggest a high-protein meal idea that fits my remaining macros for today.')">🥗 Meal idea</button>
-        <button class="btn btn-outline btn-sm" onclick="quickAsk('Check my sleep, water, and recovery data. How am I doing and what should I improve?')">😴 Recovery check</button>
-      </div>
-    </div>
-
-    <!-- Chat -->
-    <div class="card">
-      <div class="card-title">Chat with IRON Coach</div>
-      <div class="chat-wrap" id="chat-messages">
-        <div class="chat-msg ai"><div class="chat-bubble">Hey! I'm your IRON Coach. I can see all your gym data — meals, workouts, PRs, body stats, sleep, and more. Ask me anything!</div></div>
-      </div>
-      <div class="chat-input-row">
-        <input type="text" id="chat-input" placeholder="Ask your coach anything..." onkeydown="if(event.key==='Enter')sendChat()">
-        <button class="chat-send" onclick="sendChat()">→</button>
-      </div>
-    </div>
-
-  </div>
-</div>
-
 <!-- BOTTOM NAV -->
 <nav class="bottom-nav">
   <button class="bnav-btn active" onclick="switchPage('nutrition',this)"><span class="icon">🍽</span>Nutrition</button>
   <button class="bnav-btn" onclick="switchPage('workout',this)"><span class="icon">🏋️</span>Workout</button>
   <button class="bnav-btn" onclick="switchPage('body',this)"><span class="icon">📏</span>Body</button>
   <button class="bnav-btn" onclick="switchPage('health',this)"><span class="icon">❤️</span>Health</button>
-  <button class="bnav-btn" onclick="switchPage('ai',this)"><span class="icon">🤖</span>AI Coach</button>
 </nav>
 
 <script>
@@ -1172,139 +1109,12 @@ function selectCheck(id, val) {
   else no.classList.add('selected-no');
 }
 
-// ============ AI COACH ============
-let chatHistory = [];
-
-function saveApiKey() {
-  const key = document.getElementById('ai-api-key').value.trim();
-  if (!key) { showToast('Paste your API key first'); return; }
-  S.set('anthropicKey', key);
-  document.getElementById('ai-api-key').value = '';
-  showToast('API key saved!');
-  renderAI();
-}
-
-function renderAI() {
-  const key = S.get('anthropicKey');
-  const statusEl = document.getElementById('ai-key-status');
-  if (key) {
-    statusEl.innerHTML = '<div class="ai-key-saved">✓ API key saved on this device</div>';
-  } else {
-    statusEl.innerHTML = '';
-  }
-}
-
-function buildContext() {
-  const meals = getTodayMeals();
-  const totals = meals.reduce((a,m)=>({cal:a.cal+m.cal,prot:a.prot+m.prot,carb:a.carb+m.carb,fat:a.fat+m.fat}),{cal:0,prot:0,carb:0,fat:0});
-  const streak = S.get('streak') || {count:0};
-  const water = S.get('water') || {date:'',count:0};
-  const wCount = water.date === today() ? water.count : 0;
-  const sleepHistory = S.get('sleepHistory') || [];
-  const lastSleep = sleepHistory[0];
-  const wh = S.get('weightHistory') || [];
-  const lastWeight = wh.length ? wh[wh.length-1] : null;
-  const firstWeight = wh.length ? wh[0] : null;
-  const lastTrained = S.get('lastTrained') || {};
-  const allPRs = S.get('prs') || {};
-  const mh = S.get('measHistory') || [];
-  const lastMeas = mh.length ? mh[mh.length-1] : null;
-
-  return `DATE: ${today()}
-
-NUTRITION TARGETS: ${targets.cal} kcal, ${targets.prot}g protein, ${targets.carb}g carbs, ${targets.fat}g fat
-TODAY'S INTAKE: ${Math.round(totals.cal)} kcal, ${Math.round(totals.prot)}g protein, ${Math.round(totals.carb)}g carbs, ${Math.round(totals.fat)}g fat
-MEALS LOGGED: ${meals.length ? meals.map(m=>m.name).join(', ') : 'none yet'}
-
-TRAINING STREAK: ${streak.count} days
-WATER TODAY: ${wCount}/12 glasses (${Math.round(wCount/12*100)}%)
-LAST SLEEP: ${lastSleep ? lastSleep.hours + ' hours on ' + fmtDate(lastSleep.date) : 'not logged'}
-CURRENT WEIGHT: ${lastWeight ? lastWeight.weight + 'kg (started at ' + (firstWeight ? firstWeight.weight + 'kg' : 'unknown') + ')' : 'not logged'}
-BODY MEASUREMENTS: ${lastMeas ? `arms ${lastMeas.arms}", chest ${lastMeas.chest}", waist ${lastMeas.waist}", shoulders ${lastMeas.shoulders}"` : 'not logged'}
-
-PERSONAL RECORDS: ${Object.keys(allPRs).length ? Object.entries(allPRs).map(([k,v])=>`${k.replace('_',' - ')}: ${v.weight}lbs × ${v.reps} reps`).join(' | ') : 'none yet'}
-LAST TRAINED BY MUSCLE: ${Object.keys(lastTrained).length ? Object.entries(lastTrained).map(([m,d])=>`${m}: ${fmtDate(d)}`).join(', ') : 'no data'}`;
-}
-
-function appendMsg(role, text, isThinking=false) {
-  const wrap = document.getElementById('chat-messages');
-  const div = document.createElement('div');
-  div.className = 'chat-msg ' + (role === 'user' ? 'user' : 'ai');
-  if (role === 'loading') div.id = 'ai-loading-msg';
-  div.innerHTML = `<div class="chat-bubble${isThinking?' thinking':''}">${text}</div>`;
-  wrap.appendChild(div);
-  wrap.scrollTop = wrap.scrollHeight;
-  return div;
-}
-
-async function sendChat() {
-  const input = document.getElementById('chat-input');
-  const msg = input.value.trim();
-  if (!msg) return;
-  input.value = '';
-  await sendToAI(msg);
-}
-
-async function quickAsk(msg) {
-  switchPage('ai', document.querySelector('.bnav-btn:last-child'));
-  await new Promise(r => setTimeout(r, 100));
-  await sendToAI(msg);
-}
-
-async function sendToAI(userMessage) {
-  const apiKey = S.get('anthropicKey');
-  if (!apiKey) {
-    switchPage('ai', document.querySelector('.bnav-btn:last-child'));
-    appendMsg('ai', '⚠️ Please add your Anthropic API key above to use AI Coach.');
-    return;
-  }
-
-  appendMsg('user', userMessage);
-  chatHistory.push({role:'user', content: userMessage});
-
-  const loadEl = appendMsg('loading', '...', true);
-
-  try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-        'content-type': 'application/json',
-        'anthropic-dangerous-direct-browser-access': 'true'
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-6',
-        max_tokens: 1024,
-        system: `You are IRON Coach, a personal gym trainer and nutrition expert built into a gym tracking app. Give direct, motivating, practical advice. Keep responses concise (3-5 sentences) unless the user asks for a full analysis. Here is the user's live data:\n\n${buildContext()}`,
-        messages: chatHistory
-      })
-    });
-
-    loadEl.remove();
-    const data = await res.json();
-
-    if (data.content?.[0]?.text) {
-      const reply = data.content[0].text;
-      chatHistory.push({role:'assistant', content: reply});
-      if (chatHistory.length > 20) chatHistory = chatHistory.slice(-20);
-      appendMsg('ai', reply);
-    } else {
-      appendMsg('ai', '⚠️ ' + (data.error?.message || 'Something went wrong. Check your API key.'));
-    }
-  } catch {
-    loadEl.remove();
-    appendMsg('ai', '⚠️ Connection error. Check your internet and API key.');
-  }
-}
-
 // ============ INIT ============
 function init() {
   renderNutrition();
   renderWorkout();
   renderBodyStats();
   renderHealth();
-  renderAI();
 
   // load saved targets into inputs
   document.getElementById('cal-target').value = targets.cal;
